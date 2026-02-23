@@ -1,6 +1,6 @@
 {
   "name": "POMO - Pomodoro Timer",
-  "short_name": "POMO",
+  "short_name": "Pomyo",
   "description": "뽀모도로 타이머",
   "start_url": "./index.html",
   "display": "standalone",

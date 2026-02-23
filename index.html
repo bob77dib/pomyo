@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>POMO</title>
+<title>Pomyo</title>
 <meta name="theme-color" content="#f7f4f0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="POMO">
+<meta name="apple-mobile-web-app-title" content="Pomyo">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
@@ -371,7 +371,7 @@
 <!-- ══ Timer Screen ══ -->
 <div class="screen" id="screen-timer">
   <div class="screen-header" style="justify-content:center">
-    <h1>Pomodoro</h1>
+    <h1>Pomyodoro</h1>
   </div>
 
   <div class="timer-wrap" id="timerWrap">
@@ -648,10 +648,15 @@
   }
   function toggleTimer() { isRunning?pause():start(); }
 
+  let sessionStartTime = null;
   function start() {
     isRunning=true; mainBtn.textContent='일시정지'; mainBtn.classList.add('paused');
     durationRow.style.visibility='hidden';
     document.getElementById('timerWrap').classList.add('running');
+    if (!sessionStartTime) {
+      const s = new Date();
+      sessionStartTime = `${String(s.getHours()).padStart(2,'0')}:${String(s.getMinutes()).padStart(2,'0')}`;
+    }
     acquireWakeLock();
     resetFocusTimer();
     interval=setInterval(()=>{if(remainSec<=0){clearInterval(interval);onComplete();return;}remainSec--;updateDisplay();},1000);
@@ -672,6 +677,7 @@
     clearTimeout(focusTimer);
     exitFocusMode();
     releaseWakeLock();
+    sessionStartTime = null;
   }
   function onComplete() {
     isRunning=false; mainBtn.textContent='시작'; mainBtn.classList.remove('paused');
@@ -697,8 +703,10 @@
     flash.classList.remove('go');void flash.offsetWidth;flash.classList.add('go');
     const now=new Date();
     const dateKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-    const timeLabel=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    allSessions.unshift({dateKey,timeLabel,mins:durationMin});
+    const endLabel=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const startLabel = sessionStartTime || endLabel;
+    sessionStartTime = null;
+    allSessions.unshift({dateKey, timeLabel: `${startLabel}-${endLabel}`, mins:durationMin});
     try{localStorage.setItem('pomo_sessions',JSON.stringify(allSessions));}catch(e){}
     renderToday(); showToast(`🍅 ${durationMin}분 완료!`);
     remainSec=totalSec; updateDisplay();
