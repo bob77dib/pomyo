@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POMO</title>
+<meta name="theme-color" content="#f7f4f0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="POMO">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent: #e03030;
+    --accent-light: #fff0f0;
+    --accent-dark: #c01010;
+    --stem: #4a7c3f;
+  }
+
+  body {
+    background: #f7f4f0;
+    color: #1a1a1a;
+    font-family: 'Pretendard', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Screens ── */
+  .screen {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 44px 20px 80px;
+    position: absolute; top: 0; left: 0; right: 0;
+    transition: transform 0.38s cubic-bezier(0.4,0,0.2,1), opacity 0.38s;
+    will-change: transform;
+  }
+  #screen-timer    { transform: translateX(0);    opacity: 1; }
+  #screen-history  { transform: translateX(100%); opacity: 0; pointer-events: none; }
+  #screen-settings { transform: translateX(100%); opacity: 0; pointer-events: none; }
+
+  #screen-timer.out    { transform: translateX(-100%); opacity: 0; pointer-events: none; }
+  #screen-history.in   { transform: translateX(0);     opacity: 1; pointer-events: all; }
+  #screen-settings.in  { transform: translateX(0);     opacity: 1; pointer-events: all; }
+
+  /* ── Bottom nav bar ── */
+  .nav-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 60px;
+    background: #fff;
+    border-top: 1px solid #ede8e2;
+    display: flex; align-items: center; justify-content: space-around;
+    z-index: 200;
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; cursor: pointer; background: none; border: none;
+    font-family: 'Pretendard', sans-serif; font-size: 0.55rem; letter-spacing: 1.5px;
+    text-transform: uppercase; color: #ccc; transition: color 0.2s;
+    padding: 6px 0;
+  }
+  .nav-item svg { width: 20px; height: 20px; }
+  .nav-item.active { color: var(--accent); }
+
+  /* ── Header ── */
+  .screen-header {
+    width: 100%; max-width: 380px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 36px;
+  }
+  h1 {
+    font-family: 'Pretendard', sans-serif;
+    font-size: 0.72rem; letter-spacing: 5px; color: #bbb; text-transform: uppercase;
+  }
+
+  /* ── Responsive layout ── */
+  @media (max-height: 700px) {
+    .screen { padding-top: 24px; padding-bottom: 70px; }
+    .screen-header { margin-bottom: 20px; }
+    .timer-wrap { width: 220px; height: 220px; margin-bottom: 16px; }
+    .timer-wrap svg { width: 220px; height: 220px; }
+    .time-text { font-size: 2.2rem; }
+    .controls-row { margin-bottom: 14px; }
+    .btn-row { margin-bottom: 24px; }
+  }
+  @media (max-height: 600px) {
+    .timer-wrap { width: 180px; height: 180px; }
+    .timer-wrap svg { width: 180px; height: 180px; }
+  }
+  @media (max-width: 360px) {
+    .timer-wrap { width: 260px; height: 260px; }
+    .timer-wrap svg { width: 260px; height: 260px; }
+    .main-btn { padding: 12px 36px; }
+  }
+
+  /* ── Focus / Zen mode overlay ── */
+  #focus-overlay {
+    position: fixed; inset: 0;
+    background: #f7f4f0;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 500;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.6s ease;
+    flex-direction: column; gap: 24px;
+  }
+  #focus-overlay.visible { opacity: 1; pointer-events: all; }
+  #focus-overlay .focus-timer-wrap {
+    position: relative; width: min(72vw, 300px); height: min(72vw, 300px);
+    cursor: pointer; user-select: none;
+  }
+  #focus-overlay .focus-timer-wrap svg {
+    width: 100%; height: 100%; overflow: visible;
+    filter: drop-shadow(0 6px 28px rgba(0,0,0,0.1));
+  }
+  #focus-overlay .focus-stem {
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    width: 12px; height: 20px; background: var(--stem);
+    border-radius: 7px 7px 3px 3px;
+  }
+  #focus-overlay .focus-stem::after {
+    content: ''; position: absolute; top: 3px; left: 9px;
+    width: 16px; height: 11px; border: 2.5px solid var(--stem);
+    border-radius: 0 10px 0 0; border-bottom: none; border-left: none;
+  }
+  #focus-overlay .focus-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  #focus-overlay .focus-time {
+    font-family: 'Pretendard', sans-serif; font-size: clamp(2rem, 8vw, 3rem);
+    font-weight: 300; letter-spacing: -2px; color: #1a1a1a;
+    transition: opacity 0.3s;
+  }
+  #focus-overlay .focus-time.hidden { opacity: 0; }
+  #focus-overlay .focus-hint {
+    font-size: 0.68rem; color: #bbb; letter-spacing: 1px; margin-top: 6px;
+  }
+  #focus-pause-btn {
+    background: none; border: 1.5px solid #e0dbd4; border-radius: 30px;
+    color: #aaa; font-family: 'Pretendard', sans-serif;
+    font-size: 0.72rem; letter-spacing: 2px; text-transform: uppercase;
+    padding: 8px 22px; cursor: pointer; transition: border-color 0.2s, color 0.2s;
+  }
+  #focus-pause-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Timer circle ── */
+  .timer-wrap {
+    position: relative; width: min(80vw, 300px); height: min(80vw, 300px);
+    margin-bottom: 28px; cursor: grab; user-select: none;
+    transition: transform 0.12s;
+  }
+  .timer-wrap.running { cursor: pointer; }
+  .timer-wrap.dragging { cursor: grabbing; transition: none; }
+  .timer-wrap:active:not(.dragging) { transform: scale(0.975); }
+  .timer-wrap svg {
+    width: 100%; height: 100%; overflow: visible;
+    filter: drop-shadow(0 6px 28px rgba(0,0,0,0.1)) drop-shadow(0 2px 6px rgba(0,0,0,0.06));
+  }
+  .stem {
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    width: 12px; height: 20px; background: var(--stem);
+    border-radius: 7px 7px 3px 3px; z-index: 2;
+  }
+  .stem::after {
+    content: ''; position: absolute; top: 3px; left: 9px;
+    width: 16px; height: 11px; border: 2.5px solid var(--stem);
+    border-radius: 0 10px 0 0; border-bottom: none; border-left: none;
+  }
+  .timer-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    pointer-events: none; z-index: 1;
+  }
+  .time-text {
+    font-family: 'Pretendard', sans-serif; font-size: 3rem; font-weight: 300;
+    letter-spacing: -2px; color: #1a1a1a; line-height: 1; transition: opacity 0.3s;
+  }
+  .time-text.hidden { opacity: 0; }
+  .timer-hint { font-size: 0.68rem; color: #aaa; margin-top: 8px; letter-spacing: 1px; transition: color 0.2s; }
+  .timer-wrap:not(.dragging):hover .timer-hint { color: var(--accent); }
+
+  /* ── Duration ── */
+  .controls-row { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+  .dur-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1.5px solid #ddd; background: #fff; color: #666; font-size: 1.2rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: border-color 0.2s, color 0.2s;
+  }
+  .dur-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .dur-btn:disabled { opacity: 0.25; cursor: default; }
+  .dur-display { font-family: 'Pretendard', sans-serif; font-size: 0.9rem; color: #888; min-width: 44px; text-align: center; }
+
+  /* ── Action buttons ── */
+  .btn-row { display: flex; gap: 10px; margin-bottom: 44px; }
+  .main-btn {
+    background: var(--accent); border: none; border-radius: 60px; color: #fff; cursor: pointer;
+    font-family: 'Pretendard', sans-serif; font-size: 1rem; letter-spacing: 2px; padding: 13px 48px;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .main-btn:hover { background: var(--accent-dark); }
+  .main-btn:active { transform: scale(0.97); }
+  .main-btn.paused { background: #555; }
+  .main-btn.paused:hover { background: #333; }
+  .reset-btn {
+    background: #fff; border: 1.5px solid #e8e8e8; border-radius: 60px; color: #aaa; cursor: pointer;
+    font-family: 'Pretendard', sans-serif; font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase;
+    padding: 13px 22px; transition: border-color 0.2s, color 0.2s;
+  }
+  .reset-btn:hover { border-color: #ccc; color: #777; }
+
+  /* ── Today section ── */
+  .today-section { width: 100%; max-width: 360px; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-title { font-size: 0.68rem; letter-spacing: 3px; color: #bbb; text-transform: uppercase; }
+  .count-badge {
+    background: var(--accent); color: #fff; border-radius: 20px;
+    font-size: 0.62rem; font-family: 'Pretendard', sans-serif; padding: 2px 9px; display: none;
+  }
+  .done-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .done-item {
+    background: #fff; border: 1px solid #eeebe7; border-radius: 10px;
+    display: flex; align-items: center; gap: 12px; padding: 13px 16px;
+    animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.92) translateY(6px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .done-check {
+    width: 20px; height: 20px; border-radius: 50%; background: var(--accent);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; font-size: 0.65rem;
+  }
+  .done-name { font-size: 0.86rem; color: #333; }
+  .done-meta { font-family: 'Pretendard', sans-serif; font-size: 0.62rem; color: #bbb; margin-top: 2px; }
+  .empty-done { text-align: center; padding: 20px 0; color: #ccc; font-size: 0.8rem; }
+
+  /* ── Calendar ── */
+  .history-content { width: 100%; max-width: 380px; }
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .cal-nav-btn {
+    background: none; border: 1.5px solid #e0dbd4; border-radius: 50%;
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: #aaa; font-size: 1rem; transition: border-color 0.2s, color 0.2s;
+  }
+  .cal-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .cal-month-label { font-family: 'Pretendard', sans-serif; font-size: 0.82rem; letter-spacing: 2px; color: #777; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-dow {
+    text-align: center; font-family: 'Pretendard', sans-serif;
+    font-size: 0.58rem; letter-spacing: 1px; color: #ccc; padding: 4px 0 10px;
+  }
+  .cal-cell {
+    aspect-ratio: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border-radius: 8px; cursor: default; transition: background 0.15s;
+  }
+  .cal-cell.has-session { cursor: pointer; }
+  .cal-cell.has-session:hover { background: var(--accent-light); }
+  .cal-cell.selected { background: var(--accent-light); }
+  .cal-day-num {
+    font-family: 'Pretendard', sans-serif; font-size: 0.76rem; color: #555;
+    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; line-height: 1;
+  }
+  .cal-cell.other-month .cal-day-num { color: #ddd; }
+  .cal-cell.today .cal-day-num { background: var(--accent); color: #fff; }
+  .cal-count { font-family: 'Pretendard', sans-serif; font-size: 0.58rem; color: var(--accent); margin-top: 1px; font-weight: 500; }
+  .cal-detail {
+    background: #fff; border: 1px solid #eeebe7; border-radius: 12px;
+    padding: 16px 18px; margin-top: 16px;
+    animation: popIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .cal-detail-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .cal-detail-title { font-family: 'Pretendard', sans-serif; font-size: 0.68rem; color: #bbb; letter-spacing: 2px; text-transform: uppercase; }
+  .cal-detail-summary { font-family: 'Pretendard', sans-serif; font-size: 0.65rem; color: var(--accent); background: var(--accent-light); border-radius: 10px; padding: 2px 8px; }
+  .cal-detail-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid #f5f0eb; }
+  .cal-detail-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  .cal-detail-time { font-family: 'Pretendard', sans-serif; font-size: 0.8rem; color: #444; }
+  .cal-detail-min { font-family: 'Pretendard', sans-serif; font-size: 0.65rem; color: #bbb; margin-left: auto; }
+
+  /* ── Settings ── */
+  .settings-content { width: 100%; max-width: 380px; }
+
+  .setting-group {
+    background: #fff; border: 1px solid #eeebe7; border-radius: 14px;
+    overflow: hidden; margin-bottom: 20px;
+  }
+  .setting-group-title {
+    font-family: 'Pretendard', sans-serif; font-size: 0.6rem; letter-spacing: 3px;
+    color: #bbb; text-transform: uppercase; padding: 14px 18px 8px;
+  }
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-top: 1px solid #f5f0eb;
+  }
+  .setting-row:first-of-type { border-top: none; }
+  .setting-label { font-size: 0.88rem; color: #444; }
+  .setting-sub { font-size: 0.72rem; color: #bbb; margin-top: 2px; }
+
+  /* Toggle */
+  .toggle-switch { position: relative; width: 42px; height: 24px; cursor: pointer; flex-shrink: 0; }
+  .toggle-switch input { display: none; }
+  .toggle-track { position: absolute; inset: 0; border-radius: 12px; background: #ddd; transition: background 0.2s; }
+  .toggle-switch input:checked + .toggle-track { background: var(--accent); }
+  .toggle-thumb {
+    position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.2s;
+  }
+  .toggle-switch input:checked ~ .toggle-thumb { transform: translateX(18px); }
+
+  /* Color picker */
+  .color-swatches { display: flex; gap: 10px; align-items: center; }
+  .swatch {
+    width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+    border: 3px solid transparent; transition: border-color 0.2s, transform 0.15s;
+    flex-shrink: 0;
+  }
+  .swatch:hover { transform: scale(1.12); }
+  .swatch.active { border-color: #1a1a1a; }
+
+  /* Flash/Toast */
+  .flash { position: fixed; inset: 0; background: rgba(0,0,0,0.06); pointer-events: none; opacity: 0; z-index: 50; }
+  .flash.go { animation: flashAnim 0.7s ease; }
+  @keyframes flashAnim { 0%{opacity:0} 30%{opacity:1} 100%{opacity:0} }
+  .toast {
+    position: fixed; bottom: 76px; left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    background: #1a1a1a; color: #fff; border-radius: 40px; padding: 11px 22px;
+    font-size: 0.82rem; transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s;
+    opacity: 0; z-index: 300; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- ══ Timer Screen ══ -->
+<div class="screen" id="screen-timer">
+  <div class="screen-header" style="justify-content:center">
+    <h1>Pomodoro</h1>
+  </div>
+
+  <div class="timer-wrap" id="timerWrap">
+    <div class="stem"></div>
+    <svg viewBox="0 0 300 300">
+      <circle cx="150" cy="150" r="130" fill="#ffffff" stroke="#ede8e2" stroke-width="1"/>
+      <!-- drag indicator ring (outer) -->
+      <circle id="dragRing" cx="150" cy="150" r="142" fill="none" stroke="var(--accent)" stroke-width="3" stroke-dasharray="4 4" opacity="0" style="transition:opacity 0.2s;pointer-events:none"/>
+      <path id="piePath" fill="var(--accent)"/>
+      <g id="ticks"></g>
+      <circle cx="150" cy="150" r="3" fill="rgba(0,0,0,0.08)"/>
+    </svg>
+    <div class="timer-center">
+      <div class="time-text hidden" id="timeText">25:00</div>
+      <div class="timer-hint" id="timerHint">탭해서 시작</div>
+    </div>
+  </div>
+
+  <div class="controls-row" id="durationRow">
+    <button class="dur-btn" id="durMinus" onclick="changeDur(-1);event.stopPropagation()">−</button>
+    <div class="dur-display" id="durDisplay">25분</div>
+    <button class="dur-btn" id="durPlus"  onclick="changeDur(+1);event.stopPropagation()">+</button>
+  </div>
+
+  <div class="btn-row">
+    <button class="main-btn" id="mainBtn" onclick="toggleTimer()">시작</button>
+    <button class="reset-btn" onclick="resetTimer()">리셋</button>
+  </div>
+
+  <div class="today-section">
+    <div class="section-header">
+      <span class="section-title">오늘 완료</span>
+      <span class="count-badge" id="todayBadge"></span>
+    </div>
+    <ul class="done-list" id="todayList">
+      <li class="empty-done">오늘 아직 세션이 없어요 🍅</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ══ History Screen ══ -->
+<div class="screen" id="screen-history">
+  <div class="screen-header" style="justify-content:center">
+    <h1>기록</h1>
+  </div>
+  <div class="history-content">
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="calMove(-1)">‹</button>
+      <span class="cal-month-label" id="calMonthLabel"></span>
+      <button class="cal-nav-btn" onclick="calMove(+1)">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div id="calDetail"></div>
+  </div>
+</div>
+
+<!-- ══ Settings Screen ══ -->
+<div class="screen" id="screen-settings">
+  <div class="screen-header" style="justify-content:center">
+    <h1>설정</h1>
+  </div>
+  <div class="settings-content">
+
+    <!-- Theme color -->
+    <div class="setting-group">
+      <div class="setting-group-title">테마 색상</div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">색상 선택</div>
+          <div class="setting-sub">타이머와 UI에 적용돼요</div>
+        </div>
+        <div class="color-swatches" id="colorSwatches">
+          <div class="swatch active" data-color="red"   style="background:#e03030" onclick="setTheme('red')"   title="레드"></div>
+          <div class="swatch"        data-color="yellow" style="background:#ffd000" onclick="setTheme('yellow')" title="옐로우"></div>
+          <div class="swatch"        data-color="blue"   style="background:#2563eb" onclick="setTheme('blue')"  title="블루"></div>
+          <div class="swatch"        data-color="green"  style="background:#16a34a" onclick="setTheme('green')" title="그린"></div>
+          <div class="swatch"        data-color="black"  style="background:#1a1a1a" onclick="setTheme('black')" title="블랙"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timer options -->
+    <div class="setting-group">
+      <div class="setting-group-title">타이머</div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">남은 시간 표시</div>
+          <div class="setting-sub">원 안에 숫자를 보여줘요</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="timeToggle" onchange="applySettings()">
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">시계 방향</div>
+          <div class="setting-sub">켜면 시간이 오른쪽으로 줄어들어요</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="dirToggle" onchange="applySettings()">
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ Focus / Zen overlay ══ -->
+<div id="focus-overlay" onclick="exitFocusMode()">
+  <div class="focus-timer-wrap">
+    <div class="focus-stem"></div>
+    <svg viewBox="0 0 300 300" id="focusSvg">
+      <circle cx="150" cy="150" r="130" fill="#ffffff" stroke="#ede8e2" stroke-width="1"/>
+      <path id="focusPie" fill="var(--accent)"/>
+      <g id="focusTicks"></g>
+      <circle cx="150" cy="150" r="3" fill="rgba(0,0,0,0.08)"/>
+    </svg>
+    <div class="focus-center">
+      <div class="focus-time hidden" id="focusTime">25:00</div>
+      <div class="focus-hint">탭해서 나가기</div>
+    </div>
+  </div>
+  <button id="focus-pause-btn" onclick="event.stopPropagation();toggleTimer()">일시정지</button>
+</div>
+
+<!-- ══ Bottom Nav ══ -->
+<nav class="nav-bar">
+  <button class="nav-item active" id="nav-timer" onclick="goTo('timer')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+    타이머
+  </button>
+  <button class="nav-item" id="nav-history" onclick="goTo('history')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    기록
+  </button>
+  <button class="nav-item" id="nav-settings" onclick="goTo('settings')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+    설정
+  </button>
+</nav>
+
+<div class="flash" id="flash"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+  /* ── Theme colors ── */
+  const THEMES = {
+    red:    { accent:'#e03030', light:'#fff0f0', dark:'#c01010' },
+    yellow: { accent:'#ffd000', light:'#fffde0', dark:'#c9a800' },
+    blue:   { accent:'#2563eb', light:'#eff6ff', dark:'#1d4ed8' },
+    green:  { accent:'#16a34a', light:'#f0fdf4', dark:'#15803d' },
+    black:  { accent:'#1a1a1a', light:'#f5f5f5', dark:'#000000' },
+  };
+
+  let currentTheme = 'red';
+
+  function setTheme(name) {
+    currentTheme = name;
+    const t = THEMES[name];
+    document.documentElement.style.setProperty('--accent', t.accent);
+    document.documentElement.style.setProperty('--accent-light', t.light);
+    document.documentElement.style.setProperty('--accent-dark', t.dark);
+    // update swatch active state
+    document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('active', s.dataset.color === name));
+    // re-render pie with new fill
+    updatePie();
+    // persist
+    try { localStorage.setItem('pomo_theme', name); } catch(e) {}
+  }
+
+  /* ── Constants ── */
+  const CX = 150, CY = 150, R = 130, MAX_SEC = 3600;
+
+  /* ── State ── */
+  let durationMin = 25, totalSec = 1500, remainSec = 1500;
+  let isRunning = false, interval = null;
+  let allSessions = [];
+  let calYear, calMonth, selectedDate = null;
+  let currentScreen = 'timer';
+
+  /* ── Load persisted data ── */
+  try { allSessions = JSON.parse(localStorage.getItem('pomo_sessions') || '[]'); } catch(e) {}
+  try {
+    const saved = localStorage.getItem('pomo_theme');
+    if (saved && THEMES[saved]) { currentTheme = saved; const t=THEMES[saved]; document.documentElement.style.setProperty('--accent',t.accent); document.documentElement.style.setProperty('--accent-light',t.light); document.documentElement.style.setProperty('--accent-dark',t.dark); }
+  } catch(e) {}
+  try {
+    const cfg = JSON.parse(localStorage.getItem('pomo_settings') || '{}');
+    if (cfg.showTime !== undefined) document.getElementById('timeToggle').checked = cfg.showTime;
+    if (cfg.ccw !== undefined)      document.getElementById('dirToggle').checked  = cfg.ccw;
+  } catch(e) {}
+
+  const _n = new Date(); calYear = _n.getFullYear(); calMonth = _n.getMonth();
+
+  /* ── Refs ── */
+  const piePath    = document.getElementById('piePath');
+  const ticksG     = document.getElementById('ticks');
+  const timeText   = document.getElementById('timeText');
+  const timerHint  = document.getElementById('timerHint');
+  const mainBtn    = document.getElementById('mainBtn');
+  const durationRow= document.getElementById('durationRow');
+  const durDisplay = document.getElementById('durDisplay');
+  const todayList  = document.getElementById('todayList');
+  const todayBadge = document.getElementById('todayBadge');
+  const flash      = document.getElementById('flash');
+  const toast      = document.getElementById('toast');
+  const timeToggle = document.getElementById('timeToggle');
+  const dirToggle  = document.getElementById('dirToggle');
+
+  /* ── Ticks ── */
+  function drawTicks() {
+    ticksG.innerHTML = '';
+    const OUTER = R + 10;
+    for (let m = 0; m < 60; m += 5) {
+      const isMajor = m % 15 === 0;
+      const INNER = isMajor ? R + 2 : R + 5;
+      const rad = ((m / 60) * 360 - 90) * Math.PI / 180;
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', CX + INNER * Math.cos(rad)); line.setAttribute('y1', CY + INNER * Math.sin(rad));
+      line.setAttribute('x2', CX + OUTER * Math.cos(rad)); line.setAttribute('y2', CY + OUTER * Math.sin(rad));
+      line.setAttribute('stroke', isMajor ? '#ccc' : '#ddd');
+      line.setAttribute('stroke-width', isMajor ? '2' : '1.5');
+      line.setAttribute('stroke-linecap', 'round');
+      ticksG.appendChild(line);
+    }
+  }
+
+  /* ── Pie ── */
+  function polar(deg) { const r=(deg-90)*Math.PI/180; return {x:CX+R*Math.cos(r),y:CY+R*Math.sin(r)}; }
+  function describePie(ratio, ccw) {
+    if (ratio <= 0) return '';
+    if (ratio >= 0.9999) return `M${CX} ${CY} m-${R} 0 a${R} ${R} 0 1 1 ${2*R} 0 a${R} ${R} 0 1 1 -${2*R} 0`;
+    const deg=ratio*360, sweep=ccw?0:1, s=polar(0), e=polar(ccw?-deg:deg);
+    return `M${CX} ${CY} L${s.x} ${s.y} A${R} ${R} 0 ${deg>180?1:0} ${sweep} ${e.x} ${e.y} Z`;
+  }
+  function updatePie() {
+    const t = THEMES[currentTheme];
+    const urgent = remainSec <= 60 && isRunning;
+    piePath.setAttribute('fill', urgent ? t.dark : t.accent);
+    piePath.setAttribute('d', describePie(remainSec / MAX_SEC, !dirToggle.checked));
+  }
+
+  /* ── Settings apply ── */
+  function applySettings() {
+    timeText.classList.toggle('hidden', !timeToggle.checked);
+    updatePie();
+    try { localStorage.setItem('pomo_settings', JSON.stringify({showTime: timeToggle.checked, ccw: dirToggle.checked})); } catch(e) {}
+  }
+
+  /* ── Timer ── */
+  function fmt(s) { return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+  function updateDisplay() { timeText.textContent=fmt(remainSec); updatePie(); }
+  function toggleTimer() { isRunning?pause():start(); }
+
+  function start() {
+    isRunning=true; mainBtn.textContent='일시정지'; mainBtn.classList.add('paused');
+    timerHint.textContent='탭해서 일시정지'; durationRow.style.visibility='hidden';
+    document.getElementById('timerWrap').classList.add('running');
+    interval=setInterval(()=>{if(remainSec<=0){clearInterval(interval);onComplete();return;}remainSec--;updateDisplay();},1000);
+  }
+  function pause() {
+    clearInterval(interval); isRunning=false; mainBtn.textContent='계속'; mainBtn.classList.remove('paused');
+    timerHint.textContent='탭해서 계속'; durationRow.style.visibility='visible';
+    document.getElementById('timerWrap').classList.remove('running');
+  }
+  function resetTimer() {
+    clearInterval(interval); isRunning=false; remainSec=totalSec; mainBtn.textContent='시작';
+    mainBtn.classList.remove('paused'); timerHint.textContent='탭해서 시작';
+    durationRow.style.visibility='visible'; updateDisplay();
+    document.getElementById('timerWrap').classList.remove('running');
+  }
+  function onComplete() {
+    isRunning=false; mainBtn.textContent='시작'; mainBtn.classList.remove('paused');
+    timerHint.textContent='탭해서 시작'; durationRow.style.visibility='visible';
+    try {
+      const ctx=new(window.AudioContext||window.webkitAudioContext)();
+      [[523,0],[659,0.2],[784,0.4],[1047,0.65]].forEach(([f,t])=>{
+        const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);
+        o.frequency.value=f;o.type='sine';
+        g.gain.setValueAtTime(0.25,ctx.currentTime+t);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.6);
+        o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.6);
+      });
+    }catch(e){}
+    flash.classList.remove('go');void flash.offsetWidth;flash.classList.add('go');
+    const now=new Date();
+    const dateKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    const timeLabel=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    allSessions.unshift({dateKey,timeLabel,mins:durationMin});
+    try{localStorage.setItem('pomo_sessions',JSON.stringify(allSessions));}catch(e){}
+    renderToday(); showToast(`🍅 ${dateKey} ${timeLabel} 완료!`);
+    remainSec=totalSec; updateDisplay();
+  }
+
+  function changeDur(delta) {
+    if(isRunning)return;
+    durationMin=Math.min(60,Math.max(1,durationMin+delta));
+    durDisplay.textContent=`${durationMin}분`;
+    document.getElementById('durMinus').disabled=durationMin<=1;
+    document.getElementById('durPlus').disabled=durationMin>=60;
+    totalSec=durationMin*60;remainSec=totalSec;updateDisplay();
+  }
+
+
+  /* ── Drag to set time ── */
+  (function() {
+    const wrap = document.getElementById('timerWrap');
+    const dragRing = document.getElementById('dragRing');
+    let dragging = false, startX = 0, startY = 0, moved = false;
+    const DRAG_THRESHOLD = 6; // px — below this = tap
+
+    function getCenter() {
+      const rect = wrap.getBoundingClientRect();
+      return { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+    }
+
+    function angleToMinutes(angleDeg) {
+      // 0° = 12 o'clock, clockwise
+      let norm = ((angleDeg % 360) + 360) % 360; // 0-360
+      return Math.max(1, Math.min(60, Math.round(norm / 360 * 60) || 60));
+    }
+
+    function getAngle(clientX, clientY) {
+      const c = getCenter();
+      const dx = clientX - c.x, dy = clientY - c.y;
+      // atan2 gives angle from positive x-axis; we want from top (12 o'clock) clockwise
+      let angle = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+      return angle;
+    }
+
+    function onDown(e) {
+      if (isRunning) return; // can't drag while running
+      const pt = e.touches ? e.touches[0] : e;
+      startX = pt.clientX; startY = pt.clientY;
+      dragging = true; moved = false;
+      e.preventDefault();
+    }
+
+    function onMove(e) {
+      if (!dragging) return;
+      const pt = e.touches ? e.touches[0] : e;
+      const dx = pt.clientX - startX, dy = pt.clientY - startY;
+      if (!moved && Math.sqrt(dx*dx + dy*dy) < DRAG_THRESHOLD) return;
+      moved = true;
+      wrap.classList.add('dragging');
+      dragRing.setAttribute('opacity','0.35');
+      const angle = getAngle(pt.clientX, pt.clientY);
+      const mins = angleToMinutes(angle);
+      if (mins !== durationMin) {
+        durationMin = mins;
+        durDisplay.textContent = `${durationMin}분`;
+        document.getElementById('durMinus').disabled = durationMin <= 1;
+        document.getElementById('durPlus').disabled  = durationMin >= 60;
+        totalSec = durationMin * 60; remainSec = totalSec;
+        updateDisplay();
+      }
+      e.preventDefault();
+    }
+
+    function onUp(e) {
+      if (!dragging) return;
+      dragging = false;
+      wrap.classList.remove('dragging');
+      dragRing.setAttribute('opacity','0');
+      if (!moved) {
+        // treat as tap → toggle timer
+        toggleTimer();
+      }
+    }
+
+    wrap.addEventListener('mousedown',  onDown, {passive:false});
+    wrap.addEventListener('touchstart', onDown, {passive:false});
+    document.addEventListener('mousemove',  onMove, {passive:false});
+    document.addEventListener('touchmove',  onMove, {passive:false});
+    document.addEventListener('mouseup',  onUp);
+    document.addEventListener('touchend', onUp);
+  })();
+
+  /* ── Today ── */
+  function todayKey(){const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;}
+  function groupSessions(){const g={};allSessions.forEach(s=>{if(!g[s.dateKey])g[s.dateKey]=[];g[s.dateKey].push(s);});return g;}
+
+  function renderToday() {
+    const key=todayKey(),list=allSessions.filter(s=>s.dateKey===key);
+    if(!list.length){todayBadge.style.display='none';todayList.innerHTML='<li class="empty-done">오늘 아직 세션이 없어요 🍅</li>';return;}
+    todayBadge.style.display='inline-block';todayBadge.textContent=list.length;
+    todayList.innerHTML=list.map(s=>`
+      <li class="done-item">
+        <div class="done-check">✓</div>
+        <div><div class="done-name">${s.dateKey} ${s.timeLabel}</div><div class="done-meta">🍅 ${s.mins}분 세션</div></div>
+      </li>`).join('');
+  }
+
+  /* ── Calendar ── */
+  const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  function calMove(d){calMonth+=d;if(calMonth<0){calMonth=11;calYear--;}if(calMonth>11){calMonth=0;calYear++;}selectedDate=null;renderCalendar();}
+
+  function renderCalendar() {
+    const groups=groupSessions();
+    document.getElementById('calMonthLabel').textContent=`${calYear} ${MONTHS[calMonth]}`;
+    const firstDay=new Date(calYear,calMonth,1).getDay();
+    const dim=new Date(calYear,calMonth+1,0).getDate();
+    const dip=new Date(calYear,calMonth,0).getDate();
+    const todayStr=todayKey();
+    const dows=['일','월','화','수','목','금','토'];
+    let html=dows.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+    for(let i=firstDay-1;i>=0;i--)html+=`<div class="cal-cell other-month"><div class="cal-day-num">${dip-i}</div></div>`;
+    for(let d=1;d<=dim;d++){
+      const key=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const count=(groups[key]||[]).length;
+      let cls='cal-cell';
+      if(count)cls+=' has-session';
+      if(key===todayStr)cls+=' today';
+      if(key===selectedDate)cls+=' selected';
+      html+=`<div class="${cls}" onclick="selectDay('${key}')">${count?`<div class="cal-count">${count}</div>`:''}<div class="cal-day-num">${d}</div></div>`;
+    }
+    const rem=(firstDay+dim)%7===0?0:7-(firstDay+dim)%7;
+    for(let d=1;d<=rem;d++)html+=`<div class="cal-cell other-month"><div class="cal-day-num">${d}</div></div>`;
+    document.getElementById('calGrid').innerHTML=html;
+    renderCalDetail();
+  }
+
+  function selectDay(key){
+    const groups=groupSessions();
+    if(!groups[key])return;
+    selectedDate=selectedDate===key?null:key;
+    renderCalendar();
+  }
+
+  function renderCalDetail(){
+    const el=document.getElementById('calDetail');
+    if(!selectedDate){el.innerHTML='';return;}
+    const sessions=(groupSessions()[selectedDate]||[]);
+    if(!sessions.length){el.innerHTML='';return;}
+    const totalM=sessions.reduce((a,s)=>a+s.mins,0);
+    el.innerHTML=`<div class="cal-detail">
+      <div class="cal-detail-header">
+        <div class="cal-detail-title">${selectedDate}</div>
+        <div class="cal-detail-summary">🍅 ${sessions.length}개 · ${totalM}분</div>
+      </div>
+      ${sessions.map(s=>`<div class="cal-detail-item"><div class="cal-detail-dot"></div><div class="cal-detail-time">${s.timeLabel}</div><div class="cal-detail-min">${s.mins}분</div></div>`).join('')}
+    </div>`;
+  }
+
+  /* ── Navigation ── */
+  function goTo(screen) {
+    if (screen === currentScreen) return;
+    const prev = currentScreen;
+    currentScreen = screen;
+
+    // handle direction: history/settings slide from right, going back slides to right
+    const order = ['timer','history','settings'];
+    const fromIdx = order.indexOf(prev), toIdx = order.indexOf(screen);
+
+    // reset all
+    ['timer','history','settings'].forEach(s => {
+      const el = document.getElementById('screen-'+s);
+      el.classList.remove('out','in');
+      el.style.transform = '';
+      el.style.opacity = '';
+    });
+
+    const fromEl = document.getElementById('screen-'+prev);
+    const toEl   = document.getElementById('screen-'+screen);
+
+    if (toIdx > fromIdx) {
+      // slide right-to-left
+      toEl.style.transform = 'translateX(100%)'; toEl.style.opacity = '0';
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        fromEl.classList.add('out'); toEl.classList.add('in');
+        toEl.style.transform=''; toEl.style.opacity='';
+      }));
+    } else {
+      // slide left-to-right
+      toEl.style.transform = 'translateX(-100%)'; toEl.style.opacity = '0';
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        fromEl.style.transform='translateX(100%)'; fromEl.style.opacity='0';
+        toEl.classList.add('in'); toEl.style.transform=''; toEl.style.opacity='';
+      }));
+    }
+
+    // update nav active
+    ['timer','history','settings'].forEach(s => {
+      document.getElementById('nav-'+s).classList.toggle('active', s===screen);
+    });
+
+    if (screen==='history') renderCalendar();
+
+    // update swatch active state on settings open
+    if (screen==='settings') {
+      document.querySelectorAll('.swatch').forEach(sw => sw.classList.toggle('active', sw.dataset.color===currentTheme));
+    }
+  }
+
+  /* ── Toast ── */
+  let toastTimer;
+  function showToast(msg){
+    toast.textContent=msg;toast.classList.add('show');
+    clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),3000);
+  }
+
+  /* ── Wake Lock ── */
+  let wakeLock = null;
+  async function acquireWakeLock() {
+    if ('wakeLock' in navigator) {
+      try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
+    }
+  }
+  function releaseWakeLock() {
+    if (wakeLock) { wakeLock.release(); wakeLock = null; }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && isRunning) acquireWakeLock();
+  });
+
+  /* ── Focus Mode ── */
+  const focusOverlay = document.getElementById('focus-overlay');
+  const focusPie     = document.getElementById('focusPie');
+  const focusTicks   = document.getElementById('focusTicks');
+  const focusTime    = document.getElementById('focusTime');
+  const focusPauseBtn= document.getElementById('focus-pause-btn');
+  let focusTimer = null;
+  let inFocusMode = false;
+
+  function drawFocusTicks() {
+    focusTicks.innerHTML = '';
+    const OUTER=142, CX2=150, CY2=150, R2=130;
+    for (let m=0; m<60; m+=5) {
+      const isMajor=m%15===0, INNER=isMajor?R2+2:R2+5;
+      const rad=((m/60)*360-90)*Math.PI/180;
+      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1',CX2+INNER*Math.cos(rad)); line.setAttribute('y1',CY2+INNER*Math.sin(rad));
+      line.setAttribute('x2',CX2+OUTER*Math.cos(rad)); line.setAttribute('y2',CY2+OUTER*Math.sin(rad));
+      line.setAttribute('stroke',isMajor?'#ccc':'#ddd');
+      line.setAttribute('stroke-width',isMajor?'2':'1.5');
+      line.setAttribute('stroke-linecap','round');
+      focusTicks.appendChild(line);
+    }
+  }
+
+  function syncFocusPie() {
+    const t = THEMES[currentTheme];
+    const urgent = remainSec <= 60 && isRunning;
+    focusPie.setAttribute('fill', urgent ? t.dark : t.accent);
+    focusPie.setAttribute('d', describePie(remainSec / MAX_SEC, !dirToggle.checked));
+    focusTime.textContent = fmt(remainSec);
+    focusTime.classList.toggle('hidden', !timeToggle.checked);
+    focusPauseBtn.textContent = isRunning ? '일시정지' : '계속';
+  }
+
+  function enterFocusMode() {
+    if (inFocusMode) return;
+    inFocusMode = true;
+    syncFocusPie();
+    focusOverlay.classList.add('visible');
+  }
+
+  function exitFocusMode() {
+    inFocusMode = false;
+    focusOverlay.classList.remove('visible');
+    resetFocusTimer();
+  }
+
+  function resetFocusTimer() {
+    clearTimeout(focusTimer);
+    if (isRunning) {
+      focusTimer = setTimeout(enterFocusMode, 10000);
+    }
+  }
+
+  // Intercept updateDisplay to also sync focus overlay
+  const _origUpdateDisplay = updateDisplay;
+  function updateDisplay() {
+    _origUpdateDisplay();
+    if (inFocusMode) syncFocusPie();
+  }
+
+  // Intercept pause/reset to exit focus and cancel timer
+  const _origPause = pause;
+  function pause() {
+    _origPause();
+    clearTimeout(focusTimer);
+    releaseWakeLock();
+    if (inFocusMode) { syncFocusPie(); } // update pause btn text
+  }
+
+  const _origStart = start;
+  function start() {
+    _origStart();
+    acquireWakeLock();
+    resetFocusTimer();
+  }
+
+  const _origReset = resetTimer;
+  function resetTimer() {
+    _origReset();
+    clearTimeout(focusTimer);
+    exitFocusMode();
+    releaseWakeLock();
+  }
+
+  // Track user interaction to reset focus countdown
+  ['touchstart','mousedown','mousemove','keydown'].forEach(ev => {
+    document.addEventListener(ev, () => {
+      if (isRunning) resetFocusTimer();
+    }, {passive: true});
+  });
+
+  /* ── Init ── */
+  drawTicks();
+  drawFocusTicks();
+  updateDisplay();
+  renderToday();
+  applySettings();
+  document.querySelectorAll('.swatch').forEach(sw => sw.classList.toggle('active', sw.dataset.color===currentTheme));
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js');
+    });
+  }
+</script>
+</body>
+</html>
