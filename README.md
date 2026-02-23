@@ -1,4 +1,4 @@
-# Pomyo 🍅
+# POMYO 🍅
 
 심플한 포모도로 타이머 PWA
 
