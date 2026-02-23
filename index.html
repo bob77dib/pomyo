@@ -31,21 +31,22 @@
   }
 
   /* ── Screens ── */
+  .screens-wrap {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    overflow: hidden;
+  }
   .screen {
-    min-height: 100vh;
+    min-height: 100%;
     display: flex; flex-direction: column; align-items: center;
     padding: 44px 20px 80px;
-    position: absolute; top: 0; left: 0; right: 0;
-    transition: transform 0.38s cubic-bezier(0.4,0,0.2,1), opacity 0.38s;
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    overflow-y: auto;
+    transition: transform 0.32s cubic-bezier(0.4,0,0.2,1), opacity 0.32s;
     will-change: transform;
   }
-  #screen-timer    { transform: translateX(0);    opacity: 1; }
+  #screen-timer    { transform: translateX(0);    opacity: 1; pointer-events: all; }
   #screen-history  { transform: translateX(100%); opacity: 0; pointer-events: none; }
   #screen-settings { transform: translateX(100%); opacity: 0; pointer-events: none; }
-
-  #screen-timer.out    { transform: translateX(-100%); opacity: 0; pointer-events: none; }
-  #screen-history.in   { transform: translateX(0);     opacity: 1; pointer-events: all; }
-  #screen-settings.in  { transform: translateX(0);     opacity: 1; pointer-events: all; }
 
   /* ── Bottom nav bar ── */
   .nav-bar {
@@ -53,8 +54,12 @@
     height: 60px;
     background: #fff;
     border-top: 1px solid #ede8e2;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 600;
+  }
+  .nav-inner {
     display: flex; align-items: center; justify-content: space-around;
-    z-index: 200;
+    width: 50%; max-width: 300px; min-width: 180px;
   }
   .nav-item {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -75,6 +80,9 @@
   h1 {
     font-family: 'Pretendard', sans-serif;
     font-size: 0.72rem; letter-spacing: 5px; color: #bbb; text-transform: uppercase;
+  }
+  .h1-history {
+    font-size: 0.82rem; letter-spacing: 1px; color: #222; font-weight: 700; text-transform: none;
   }
 
   /* ── Responsive layout ── */
@@ -124,7 +132,7 @@
   #focus-overlay .focus-stem::after {
     content: ''; position: absolute; top: 3px; left: 9px;
     width: 16px; height: 11px; border: 2.5px solid var(--stem);
-    border-radius: 0 10px 0 0; border-bottom: none; border-left: none;
+    border-radius: 0 18px 0 0; border-bottom: none; border-left: none;
   }
   #focus-overlay .focus-center {
     position: absolute; inset: 0;
@@ -137,16 +145,6 @@
     transition: opacity 0.3s;
   }
   #focus-overlay .focus-time.hidden { opacity: 0; }
-  #focus-overlay .focus-hint {
-    font-size: 0.68rem; color: #bbb; letter-spacing: 1px; margin-top: 6px;
-  }
-  #focus-pause-btn {
-    background: none; border: 1.5px solid #e0dbd4; border-radius: 30px;
-    color: #aaa; font-family: 'Pretendard', sans-serif;
-    font-size: 0.72rem; letter-spacing: 2px; text-transform: uppercase;
-    padding: 8px 22px; cursor: pointer; transition: border-color 0.2s, color 0.2s;
-  }
-  #focus-pause-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   /* ── Timer circle ── */
   .timer-wrap {
@@ -170,6 +168,11 @@
     content: ''; position: absolute; top: 3px; left: 9px;
     width: 16px; height: 11px; border: 2.5px solid var(--stem);
     border-radius: 0 10px 0 0; border-bottom: none; border-left: none;
+    transition: transform 0.5s cubic-bezier(0.34,1.56,0.64,1), border-radius 0.5s ease;
+  }
+  .timer-wrap.running .stem::after {
+    transform: rotate(-40deg) translateY(-4px);
+    border-radius: 0 18px 0 0;
   }
   .timer-center {
     position: absolute; inset: 0;
@@ -177,12 +180,17 @@
     pointer-events: none; z-index: 1;
   }
   .time-text {
-    font-family: 'Pretendard', sans-serif; font-size: 3rem; font-weight: 300;
-    letter-spacing: -2px; color: #1a1a1a; line-height: 1; transition: opacity 0.3s;
+    font-family: 'Pretendard', sans-serif; font-size: 1.6rem; font-weight: 200;
+    letter-spacing: -1px; color: rgba(26,26,26,0.7); line-height: 1; font-weight: 600;
+    transition: opacity 0.15s ease, transform 0.15s ease, filter 0.15s ease;
   }
-  .time-text.hidden { opacity: 0; }
-  .timer-hint { font-size: 0.68rem; color: #aaa; margin-top: 8px; letter-spacing: 1px; transition: color 0.2s; }
-  .timer-wrap:not(.dragging):hover .timer-hint { color: var(--accent); }
+  .time-text.hidden {
+    opacity: 0; transform: translateY(-4px) scale(0.97); filter: blur(3px); pointer-events: none;
+  }
+  .timer-wrap:not(.dragging):hover .time-text.hidden,
+  .timer-wrap.dragging .time-text.hidden {
+    opacity: 1; transform: translateY(0) scale(1); filter: blur(0px);
+  }
 
   /* ── Duration ── */
   .controls-row { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
@@ -193,7 +201,7 @@
   }
   .dur-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
   .dur-btn:disabled { opacity: 0.25; cursor: default; }
-  .dur-display { font-family: 'Pretendard', sans-serif; font-size: 0.9rem; color: #888; min-width: 44px; text-align: center; }
+  .dur-display { font-family: 'Pretendard', sans-serif; font-size: 0.9rem; color: #444; min-width: 44px; text-align: center; }
 
   /* ── Action buttons ── */
   .btn-row { display: flex; gap: 10px; margin-bottom: 44px; }
@@ -208,7 +216,7 @@
   .main-btn.paused:hover { background: #333; }
   .reset-btn {
     background: #fff; border: 1.5px solid #e8e8e8; border-radius: 60px; color: #aaa; cursor: pointer;
-    font-family: 'Pretendard', sans-serif; font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase;
+    font-family: 'Pretendard', sans-serif; font-size: 1rem; letter-spacing: 2px;
     padding: 13px 22px; transition: border-color 0.2s, color 0.2s;
   }
   .reset-btn:hover { border-color: #ccc; color: #777; }
@@ -216,16 +224,34 @@
   /* ── Today section ── */
   .today-section { width: 100%; max-width: 360px; }
   .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .section-title { font-size: 0.68rem; letter-spacing: 3px; color: #bbb; text-transform: uppercase; }
+  .section-title { font-size: 0.82rem; letter-spacing: 1px; color: #222; font-weight: 700; }
   .count-badge {
     background: var(--accent); color: #fff; border-radius: 20px;
     font-size: 0.62rem; font-family: 'Pretendard', sans-serif; padding: 2px 9px; display: none;
   }
-  .done-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
-  .done-item {
-    background: #fff; border: 1px solid #eeebe7; border-radius: 10px;
-    display: flex; align-items: center; gap: 12px; padding: 13px 16px;
+  .done-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .done-row {
+    position: relative; overflow: hidden; border-radius: 8px;
     animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .done-delete-bg {
+    position: absolute; right: 0; top: 0; bottom: 0;
+    width: 72px; background: #ff3b30;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 0.72rem; letter-spacing: 1px;
+    border-radius: 0 8px 8px 0;
+    transform: translateX(100%);
+    transition: transform 0.2s cubic-bezier(0.4,0,0.2,1);
+  }
+  .done-row.swiped .done-delete-bg { transform: translateX(0); }
+  .done-item {
+    background: #fff; border: 1px solid #eeebe7; border-radius: 8px;
+    display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+    position: relative; z-index: 1;
+    transform: translateX(0);
+    transition: transform 0.2s cubic-bezier(0.4,0,0.2,1);
+    will-change: transform;
+    touch-action: pan-y;
   }
   @keyframes popIn {
     from { opacity: 0; transform: scale(0.92) translateY(6px); }
@@ -235,8 +261,8 @@
     width: 20px; height: 20px; border-radius: 50%; background: var(--accent);
     display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; font-size: 0.65rem;
   }
-  .done-name { font-size: 0.86rem; color: #333; }
-  .done-meta { font-family: 'Pretendard', sans-serif; font-size: 0.62rem; color: #bbb; margin-top: 2px; }
+  .done-name { font-size: 0.86rem; color: #333; flex: 1; }
+  .done-meta { font-family: 'Pretendard', sans-serif; font-size: 0.62rem; color: #bbb; white-space: nowrap; margin-left: auto; }
   .empty-done { text-align: center; padding: 20px 0; color: #ccc; font-size: 0.8rem; }
 
   /* ── Calendar ── */
@@ -248,11 +274,11 @@
     cursor: pointer; color: #aaa; font-size: 1rem; transition: border-color 0.2s, color 0.2s;
   }
   .cal-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .cal-month-label { font-family: 'Pretendard', sans-serif; font-size: 0.82rem; letter-spacing: 2px; color: #777; }
+  .cal-month-label { font-family: 'Pretendard', sans-serif; font-size: 0.82rem; letter-spacing: 2px; color: #bbb; }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
   .cal-dow {
     text-align: center; font-family: 'Pretendard', sans-serif;
-    font-size: 0.58rem; letter-spacing: 1px; color: #ccc; padding: 4px 0 10px;
+    font-size: 0.82rem; letter-spacing: 1px; color: #222; font-weight: 700; padding: 4px 0 10px;
   }
   .cal-cell {
     aspect-ratio: 1; display: flex; flex-direction: column;
@@ -291,8 +317,8 @@
     overflow: hidden; margin-bottom: 20px;
   }
   .setting-group-title {
-    font-family: 'Pretendard', sans-serif; font-size: 0.6rem; letter-spacing: 3px;
-    color: #bbb; text-transform: uppercase; padding: 14px 18px 8px;
+    font-family: 'Pretendard', sans-serif; font-size: 0.82rem; letter-spacing: 1px;
+    color: #222; font-weight: 700; padding: 14px 18px 8px;
   }
   .setting-row {
     display: flex; align-items: center; justify-content: space-between;
@@ -332,12 +358,15 @@
     transform: translateX(-50%) translateY(60px);
     background: #1a1a1a; color: #fff; border-radius: 40px; padding: 11px 22px;
     font-size: 0.82rem; transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s;
-    opacity: 0; z-index: 300; white-space: nowrap;
+    opacity: 0; z-index: 300; white-space: nowrap; pointer-events: none;
   }
-  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: all; }
 </style>
 </head>
 <body>
+
+<!-- ══ Screens Wrapper ══ -->
+<div class="screens-wrap">
 
 <!-- ══ Timer Screen ══ -->
 <div class="screen" id="screen-timer">
@@ -357,7 +386,6 @@
     </svg>
     <div class="timer-center">
       <div class="time-text hidden" id="timeText">25:00</div>
-      <div class="timer-hint" id="timerHint">탭해서 시작</div>
     </div>
   </div>
 
@@ -369,7 +397,7 @@
 
   <div class="btn-row">
     <button class="main-btn" id="mainBtn" onclick="toggleTimer()">시작</button>
-    <button class="reset-btn" onclick="resetTimer()">리셋</button>
+    <button class="reset-btn" onclick="resetTimer()">초기화</button>
   </div>
 
   <div class="today-section">
@@ -386,7 +414,7 @@
 <!-- ══ History Screen ══ -->
 <div class="screen" id="screen-history">
   <div class="screen-header" style="justify-content:center">
-    <h1>기록</h1>
+    <h1 class="h1-history">기록</h1>
   </div>
   <div class="history-content">
     <div class="cal-nav">
@@ -402,7 +430,7 @@
 <!-- ══ Settings Screen ══ -->
 <div class="screen" id="screen-settings">
   <div class="screen-header" style="justify-content:center">
-    <h1>설정</h1>
+    <h1 class="h1-history">설정</h1>
   </div>
   <div class="settings-content">
 
@@ -416,7 +444,7 @@
         </div>
         <div class="color-swatches" id="colorSwatches">
           <div class="swatch active" data-color="red"   style="background:#e03030" onclick="setTheme('red')"   title="레드"></div>
-          <div class="swatch"        data-color="yellow" style="background:#ffd000" onclick="setTheme('yellow')" title="옐로우"></div>
+          <div class="swatch"        data-color="yellow" style="background:#ffbd26" onclick="setTheme('yellow')" title="옐로우"></div>
           <div class="swatch"        data-color="blue"   style="background:#2563eb" onclick="setTheme('blue')"  title="블루"></div>
           <div class="swatch"        data-color="green"  style="background:#16a34a" onclick="setTheme('green')" title="그린"></div>
           <div class="swatch"        data-color="black"  style="background:#1a1a1a" onclick="setTheme('black')" title="블랙"></div>
@@ -447,6 +475,16 @@
           <div class="toggle-track"></div><div class="toggle-thumb"></div>
         </label>
       </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">진동</div>
+          <div class="setting-sub">완료 시 진동으로 알려줘요</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="vibToggle" onchange="applySettings()">
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
     </div>
 
   </div>
@@ -464,33 +502,35 @@
     </svg>
     <div class="focus-center">
       <div class="focus-time hidden" id="focusTime">25:00</div>
-      <div class="focus-hint">탭해서 나가기</div>
     </div>
   </div>
-  <button id="focus-pause-btn" onclick="event.stopPropagation();toggleTimer()">일시정지</button>
 </div>
+
+</div><!-- end screens-wrap -->
 
 <!-- ══ Bottom Nav ══ -->
 <nav class="nav-bar">
-  <button class="nav-item active" id="nav-timer" onclick="goTo('timer')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-    </svg>
-    타이머
-  </button>
-  <button class="nav-item" id="nav-history" onclick="goTo('history')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-    </svg>
-    기록
-  </button>
-  <button class="nav-item" id="nav-settings" onclick="goTo('settings')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-    </svg>
-    설정
-  </button>
+  <div class="nav-inner">
+    <button class="nav-item active" id="nav-timer" onclick="goTo('timer')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+      </svg>
+      타이머
+    </button>
+    <button class="nav-item" id="nav-history" onclick="goTo('history')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      기록
+    </button>
+    <button class="nav-item" id="nav-settings" onclick="goTo('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      설정
+    </button>
+  </div>
 </nav>
 
 <div class="flash" id="flash"></div>
@@ -500,7 +540,7 @@
   /* ── Theme colors ── */
   const THEMES = {
     red:    { accent:'#e03030', light:'#fff0f0', dark:'#c01010' },
-    yellow: { accent:'#ffd000', light:'#fffde0', dark:'#c9a800' },
+    yellow: { accent:'#ffbd26', light:'#fffde0', dark:'#c9a800' },
     blue:   { accent:'#2563eb', light:'#eff6ff', dark:'#1d4ed8' },
     green:  { accent:'#16a34a', light:'#f0fdf4', dark:'#15803d' },
     black:  { accent:'#1a1a1a', light:'#f5f5f5', dark:'#000000' },
@@ -542,6 +582,7 @@
     const cfg = JSON.parse(localStorage.getItem('pomo_settings') || '{}');
     if (cfg.showTime !== undefined) document.getElementById('timeToggle').checked = cfg.showTime;
     if (cfg.ccw !== undefined)      document.getElementById('dirToggle').checked  = cfg.ccw;
+    if (cfg.vib !== undefined)      document.getElementById('vibToggle').checked  = cfg.vib;
   } catch(e) {}
 
   const _n = new Date(); calYear = _n.getFullYear(); calMonth = _n.getMonth();
@@ -550,7 +591,6 @@
   const piePath    = document.getElementById('piePath');
   const ticksG     = document.getElementById('ticks');
   const timeText   = document.getElementById('timeText');
-  const timerHint  = document.getElementById('timerHint');
   const mainBtn    = document.getElementById('mainBtn');
   const durationRow= document.getElementById('durationRow');
   const durDisplay = document.getElementById('durDisplay');
@@ -560,7 +600,6 @@
   const toast      = document.getElementById('toast');
   const timeToggle = document.getElementById('timeToggle');
   const dirToggle  = document.getElementById('dirToggle');
-
   /* ── Ticks ── */
   function drawTicks() {
     ticksG.innerHTML = '';
@@ -598,34 +637,50 @@
   function applySettings() {
     timeText.classList.toggle('hidden', !timeToggle.checked);
     updatePie();
-    try { localStorage.setItem('pomo_settings', JSON.stringify({showTime: timeToggle.checked, ccw: dirToggle.checked})); } catch(e) {}
+    try { localStorage.setItem('pomo_settings', JSON.stringify({showTime: timeToggle.checked, ccw: dirToggle.checked, vib: document.getElementById('vibToggle').checked})); } catch(e) {}
   }
 
   /* ── Timer ── */
   function fmt(s) { return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
-  function updateDisplay() { timeText.textContent=fmt(remainSec); updatePie(); }
+  function updateDisplay() {
+    timeText.textContent=fmt(remainSec); updatePie();
+    if (inFocusMode) syncFocusPie();
+  }
   function toggleTimer() { isRunning?pause():start(); }
 
   function start() {
     isRunning=true; mainBtn.textContent='일시정지'; mainBtn.classList.add('paused');
-    timerHint.textContent='탭해서 일시정지'; durationRow.style.visibility='hidden';
+    durationRow.style.visibility='hidden';
     document.getElementById('timerWrap').classList.add('running');
+    acquireWakeLock();
+    resetFocusTimer();
     interval=setInterval(()=>{if(remainSec<=0){clearInterval(interval);onComplete();return;}remainSec--;updateDisplay();},1000);
   }
   function pause() {
     clearInterval(interval); isRunning=false; mainBtn.textContent='계속'; mainBtn.classList.remove('paused');
-    timerHint.textContent='탭해서 계속'; durationRow.style.visibility='visible';
+    durationRow.style.visibility='visible';
     document.getElementById('timerWrap').classList.remove('running');
+    clearTimeout(focusTimer);
+    releaseWakeLock();
+    if (inFocusMode) syncFocusPie();
   }
   function resetTimer() {
     clearInterval(interval); isRunning=false; remainSec=totalSec; mainBtn.textContent='시작';
-    mainBtn.classList.remove('paused'); timerHint.textContent='탭해서 시작';
+    mainBtn.classList.remove('paused');
     durationRow.style.visibility='visible'; updateDisplay();
     document.getElementById('timerWrap').classList.remove('running');
+    clearTimeout(focusTimer);
+    exitFocusMode();
+    releaseWakeLock();
   }
   function onComplete() {
     isRunning=false; mainBtn.textContent='시작'; mainBtn.classList.remove('paused');
-    timerHint.textContent='탭해서 시작'; durationRow.style.visibility='visible';
+    durationRow.style.visibility='visible';
+    document.getElementById('timerWrap').classList.remove('running');
+    clearTimeout(focusTimer);
+    exitFocusMode();
+    releaseWakeLock();
+    // 소리
     try {
       const ctx=new(window.AudioContext||window.webkitAudioContext)();
       [[523,0],[659,0.2],[784,0.4],[1047,0.65]].forEach(([f,t])=>{
@@ -635,14 +690,20 @@
         o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.6);
       });
     }catch(e){}
+    // 진동
+    if (document.getElementById('vibToggle').checked && navigator.vibrate) {
+      navigator.vibrate([200, 100, 200, 100, 400]);
+    }
     flash.classList.remove('go');void flash.offsetWidth;flash.classList.add('go');
     const now=new Date();
     const dateKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     const timeLabel=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
     allSessions.unshift({dateKey,timeLabel,mins:durationMin});
     try{localStorage.setItem('pomo_sessions',JSON.stringify(allSessions));}catch(e){}
-    renderToday(); showToast(`🍅 ${dateKey} ${timeLabel} 완료!`);
+    renderToday(); showToast(`🍅 ${durationMin}분 완료!`);
     remainSec=totalSec; updateDisplay();
+    // 타이머 메인화면으로 복귀
+    if (currentScreen !== 'timer') goTo('timer');
   }
 
   function changeDur(delta) {
@@ -659,66 +720,85 @@
   (function() {
     const wrap = document.getElementById('timerWrap');
     const dragRing = document.getElementById('dragRing');
-    let dragging = false, startX = 0, startY = 0, moved = false;
-    const DRAG_THRESHOLD = 6; // px — below this = tap
+    let dragging = false, moved = false;
+    let startX = 0, startY = 0;
+    let prevAngle = null; // 이전 프레임 각도 추적 (순환 방지용)
+    const DRAG_THRESHOLD = 6;
 
     function getCenter() {
       const rect = wrap.getBoundingClientRect();
-      return { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
-    }
-
-    function angleToMinutes(angleDeg) {
-      // 0° = 12 o'clock, clockwise
-      let norm = ((angleDeg % 360) + 360) % 360; // 0-360
-      return Math.max(1, Math.min(60, Math.round(norm / 360 * 60) || 60));
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
     }
 
     function getAngle(clientX, clientY) {
       const c = getCenter();
       const dx = clientX - c.x, dy = clientY - c.y;
-      // atan2 gives angle from positive x-axis; we want from top (12 o'clock) clockwise
       let angle = Math.atan2(dy, dx) * 180 / Math.PI + 90;
-      return angle;
+      return ((angle % 360) + 360) % 360; // 0–360
     }
 
     function onDown(e) {
-      if (isRunning) return; // can't drag while running
       const pt = e.touches ? e.touches[0] : e;
       startX = pt.clientX; startY = pt.clientY;
-      dragging = true; moved = false;
+      dragging = true; moved = false; prevAngle = null;
       e.preventDefault();
     }
 
     function onMove(e) {
       if (!dragging) return;
+      if (isRunning) return;
       const pt = e.touches ? e.touches[0] : e;
       const dx = pt.clientX - startX, dy = pt.clientY - startY;
-      if (!moved && Math.sqrt(dx*dx + dy*dy) < DRAG_THRESHOLD) return;
+      if (!moved && Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return;
       moved = true;
       wrap.classList.add('dragging');
-      dragRing.setAttribute('opacity','0.35');
-      const angle = getAngle(pt.clientX, pt.clientY);
-      const mins = angleToMinutes(angle);
-      if (mins !== durationMin) {
-        durationMin = mins;
-        durDisplay.textContent = `${durationMin}분`;
-        document.getElementById('durMinus').disabled = durationMin <= 1;
-        document.getElementById('durPlus').disabled  = durationMin >= 60;
-        totalSec = durationMin * 60; remainSec = totalSec;
-        updateDisplay();
+      dragRing.setAttribute('opacity', '0.35');
+
+      const isCCW = !dirToggle.checked;
+      const rawAngle = getAngle(pt.clientX, pt.clientY);
+      const angle = isCCW ? (360 - rawAngle) % 360 : rawAngle;
+
+      // 12시 방향 경계 넘을 때 순환 방지
+      if (prevAngle !== null) {
+        const delta = angle - prevAngle;
+        if (delta > 180) {
+          // 경계를 반시계로 넘음 → 1분에서 멈춤, prevAngle 유지
+          durationMin = 1;
+          applyDur();
+          e.preventDefault(); return;
+        }
+        if (delta < -180) {
+          // 경계를 시계로 넘음 → 60분에서 멈춤, prevAngle 유지
+          durationMin = 60;
+          applyDur();
+          e.preventDefault(); return;
+        }
+      }
+      prevAngle = angle;
+
+      const mins = Math.max(1, Math.round(angle / 360 * 60));
+      const clamped = Math.max(1, Math.min(60, mins));
+      if (clamped !== durationMin) {
+        durationMin = clamped;
+        applyDur();
       }
       e.preventDefault();
     }
 
+    function applyDur() {
+      durDisplay.textContent = `${durationMin}분`;
+      document.getElementById('durMinus').disabled = durationMin <= 1;
+      document.getElementById('durPlus').disabled  = durationMin >= 60;
+      totalSec = durationMin * 60; remainSec = totalSec;
+      updateDisplay();
+    }
+
     function onUp(e) {
       if (!dragging) return;
-      dragging = false;
+      dragging = false; prevAngle = null;
       wrap.classList.remove('dragging');
-      dragRing.setAttribute('opacity','0');
-      if (!moved) {
-        // treat as tap → toggle timer
-        toggleTimer();
-      }
+      dragRing.setAttribute('opacity', '0');
+      if (!moved) toggleTimer();
     }
 
     wrap.addEventListener('mousedown',  onDown, {passive:false});
@@ -733,30 +813,109 @@
   function todayKey(){const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;}
   function groupSessions(){const g={};allSessions.forEach(s=>{if(!g[s.dateKey])g[s.dateKey]=[];g[s.dateKey].push(s);});return g;}
 
+  document.addEventListener('mousedown', (e) => {
+    if (!e.target.closest('.done-row')) closeAllSwipes();
+  });
+  document.addEventListener('touchstart', (e) => {
+    if (!e.target.closest('.done-row')) closeAllSwipes();
+  }, {passive: true});
+  let _swipeClosers = [];
+  function closeAllSwipes() { _swipeClosers.forEach(fn => fn()); }
+
+  function deleteSession(idx) {
+    const key = todayKey();
+    const todayList2 = allSessions.filter(s => s.dateKey === key);
+    const target = todayList2[idx];
+    const ai = allSessions.findIndex(s => s === target);
+    if (ai !== -1) allSessions.splice(ai, 1);
+    try { localStorage.setItem('pomo_sessions', JSON.stringify(allSessions)); } catch(e) {}
+    renderToday();
+  }
+
   function renderToday() {
-    const key=todayKey(),list=allSessions.filter(s=>s.dateKey===key);
+    const key=todayKey(), list=allSessions.filter(s=>s.dateKey===key);
     if(!list.length){todayBadge.style.display='none';todayList.innerHTML='<li class="empty-done">오늘 아직 세션이 없어요 🍅</li>';return;}
     todayBadge.style.display='inline-block';todayBadge.textContent=list.length;
-    todayList.innerHTML=list.map(s=>`
-      <li class="done-item">
-        <div class="done-check">✓</div>
-        <div><div class="done-name">${s.dateKey} ${s.timeLabel}</div><div class="done-meta">🍅 ${s.mins}분 세션</div></div>
+    todayList.innerHTML=list.map((s,i)=>`
+      <li class="done-row" data-idx="${i}">
+        <div class="done-delete-bg">삭제</div>
+        <div class="done-item">
+          <div class="done-check">✓</div>
+          <div class="done-name">${s.dateKey} ${s.timeLabel}</div>
+          <div class="done-meta">🍅 ${s.mins}분 기록</div>
+        </div>
       </li>`).join('');
+
+    _swipeClosers = [];
+
+    todayList.querySelectorAll('.done-row').forEach((row, idx) => {
+      const item = row.querySelector('.done-item');
+      let startX=0, startY=0, swiping=false, opened=false;
+      const THRESHOLD = 72;
+
+      function open() {
+        opened = true;
+        row.classList.add('swiped');
+        item.style.transform = `translateX(-${THRESHOLD}px)`;
+      }
+      function close() {
+        opened = false;
+        row.classList.remove('swiped');
+        item.style.transform = 'translateX(0)';
+      }
+      _swipeClosers.push(close);
+
+      function pointerDown(e) {
+        const pt = e.touches ? e.touches[0] : e;
+        startX = pt.clientX; startY = pt.clientY;
+        swiping = true;
+        item.style.transition = 'none';
+      }
+      function pointerMove(e) {
+        if (!swiping) return;
+        const pt = e.touches ? e.touches[0] : e;
+        const dx = pt.clientX - startX;
+        const dy = pt.clientY - startY;
+        if (!opened && Math.abs(dy) > Math.abs(dx)) { swiping=false; return; }
+        const base = opened ? -THRESHOLD : 0;
+        const next = Math.max(-THRESHOLD, Math.min(0, base + dx));
+        item.style.transform = `translateX(${next}px)`;
+        if (Math.abs(dx) > 4) e.preventDefault();
+      }
+      function pointerUp(e) {
+        if (!swiping) return;
+        swiping = false;
+        const pt = e.changedTouches ? e.changedTouches[0] : e;
+        const dx = pt.clientX - startX;
+        item.style.transition = '';
+        if (opened) { dx > 30 ? close() : open(); }
+        else        { dx < -40 ? open() : close(); }
+      }
+
+      row.querySelector('.done-delete-bg').addEventListener('click', () => deleteSession(idx));
+
+      item.addEventListener('touchstart', pointerDown, {passive:true});
+      item.addEventListener('touchmove',  pointerMove, {passive:false});
+      item.addEventListener('touchend',   pointerUp);
+      item.addEventListener('mousedown',  pointerDown);
+      document.addEventListener('mousemove', pointerMove, {passive:false});
+      document.addEventListener('mouseup',   pointerUp);
+    });
   }
 
   /* ── Calendar ── */
-  const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const MONTHS=['일월','이월','삼월','사월','오월','육월','칠월','팔월','구월','시월','십일월','십이월'];
   function calMove(d){calMonth+=d;if(calMonth<0){calMonth=11;calYear--;}if(calMonth>11){calMonth=0;calYear++;}selectedDate=null;renderCalendar();}
 
   function renderCalendar() {
     const groups=groupSessions();
-    document.getElementById('calMonthLabel').textContent=`${calYear} ${MONTHS[calMonth]}`;
+    document.getElementById('calMonthLabel').textContent=`${calYear}. ${String(calMonth+1).padStart(2,'0')}.`;
     const firstDay=new Date(calYear,calMonth,1).getDay();
     const dim=new Date(calYear,calMonth+1,0).getDate();
     const dip=new Date(calYear,calMonth,0).getDate();
     const todayStr=todayKey();
-    const dows=['일','월','화','수','목','금','토'];
-    let html=dows.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+    const dows=['ㅇ','ㅇ','ㅎ','ㅅ','ㅁ','ㄱ','ㅌ'];
+    let html=dows.map((d,i)=>`<div class="cal-dow" style="${i===0?'color:#e03030':i===6?'color:#2563eb':''}">${d}</div>`).join('');
     for(let i=firstDay-1;i>=0;i--)html+=`<div class="cal-cell other-month"><div class="cal-day-num">${dip-i}</div></div>`;
     for(let d=1;d<=dim;d++){
       const key=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -798,50 +957,58 @@
   /* ── Navigation ── */
   function goTo(screen) {
     if (screen === currentScreen) return;
+    if (inFocusMode) exitFocusMode();
+    closeAllSwipes();
     const prev = currentScreen;
     currentScreen = screen;
 
-    // handle direction: history/settings slide from right, going back slides to right
     const order = ['timer','history','settings'];
     const fromIdx = order.indexOf(prev), toIdx = order.indexOf(screen);
+    const goForward = toIdx > fromIdx;
 
-    // reset all
+    const fromEl = document.getElementById('screen-' + prev);
+    const toEl   = document.getElementById('screen-' + screen);
+
+    // 비활성 화면들은 화면 밖에 숨겨두기 (겹침 방지)
     ['timer','history','settings'].forEach(s => {
-      const el = document.getElementById('screen-'+s);
-      el.classList.remove('out','in');
-      el.style.transform = '';
-      el.style.opacity = '';
+      if (s === prev || s === screen) return;
+      const el = document.getElementById('screen-' + s);
+      el.style.transition = 'none';
+      el.style.transform = 'translateX(100%)';
+      el.style.opacity = '0';
+      el.style.pointerEvents = 'none';
     });
 
-    const fromEl = document.getElementById('screen-'+prev);
-    const toEl   = document.getElementById('screen-'+screen);
+    // to 화면을 출발 위치에 즉시 배치 (transition 없이)
+    toEl.style.transition = 'none';
+    toEl.style.transform = goForward ? 'translateX(100%)' : 'translateX(-100%)';
+    toEl.style.opacity = '0';
+    toEl.style.pointerEvents = 'none';
 
-    if (toIdx > fromIdx) {
-      // slide right-to-left
-      toEl.style.transform = 'translateX(100%)'; toEl.style.opacity = '0';
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        fromEl.classList.add('out'); toEl.classList.add('in');
-        toEl.style.transform=''; toEl.style.opacity='';
-      }));
-    } else {
-      // slide left-to-right
-      toEl.style.transform = 'translateX(-100%)'; toEl.style.opacity = '0';
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        fromEl.style.transform='translateX(100%)'; fromEl.style.opacity='0';
-        toEl.classList.add('in'); toEl.style.transform=''; toEl.style.opacity='';
-      }));
-    }
+    // 다음 프레임에서 transition 켜고 애니메이션
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const dur = '0.32s';
+      const ease = 'cubic-bezier(0.4,0,0.2,1)';
 
-    // update nav active
+      fromEl.style.transition = `transform ${dur} ${ease}, opacity ${dur}`;
+      fromEl.style.transform = goForward ? 'translateX(-100%)' : 'translateX(100%)';
+      fromEl.style.opacity = '0';
+      fromEl.style.pointerEvents = 'none';
+
+      toEl.style.transition = `transform ${dur} ${ease}, opacity ${dur}`;
+      toEl.style.transform = 'translateX(0)';
+      toEl.style.opacity = '1';
+      toEl.style.pointerEvents = 'all';
+    }));
+
+    // nav active 업데이트
     ['timer','history','settings'].forEach(s => {
-      document.getElementById('nav-'+s).classList.toggle('active', s===screen);
+      document.getElementById('nav-' + s).classList.toggle('active', s === screen);
     });
 
-    if (screen==='history') renderCalendar();
-
-    // update swatch active state on settings open
-    if (screen==='settings') {
-      document.querySelectorAll('.swatch').forEach(sw => sw.classList.toggle('active', sw.dataset.color===currentTheme));
+    if (screen === 'history') renderCalendar();
+    if (screen === 'settings') {
+      document.querySelectorAll('.swatch').forEach(sw => sw.classList.toggle('active', sw.dataset.color === currentTheme));
     }
   }
 
@@ -871,7 +1038,6 @@
   const focusPie     = document.getElementById('focusPie');
   const focusTicks   = document.getElementById('focusTicks');
   const focusTime    = document.getElementById('focusTime');
-  const focusPauseBtn= document.getElementById('focus-pause-btn');
   let focusTimer = null;
   let inFocusMode = false;
 
@@ -898,7 +1064,6 @@
     focusPie.setAttribute('d', describePie(remainSec / MAX_SEC, !dirToggle.checked));
     focusTime.textContent = fmt(remainSec);
     focusTime.classList.toggle('hidden', !timeToggle.checked);
-    focusPauseBtn.textContent = isRunning ? '일시정지' : '계속';
   }
 
   function enterFocusMode() {
@@ -921,39 +1086,8 @@
     }
   }
 
-  // Intercept updateDisplay to also sync focus overlay
-  const _origUpdateDisplay = updateDisplay;
-  function updateDisplay() {
-    _origUpdateDisplay();
-    if (inFocusMode) syncFocusPie();
-  }
-
-  // Intercept pause/reset to exit focus and cancel timer
-  const _origPause = pause;
-  function pause() {
-    _origPause();
-    clearTimeout(focusTimer);
-    releaseWakeLock();
-    if (inFocusMode) { syncFocusPie(); } // update pause btn text
-  }
-
-  const _origStart = start;
-  function start() {
-    _origStart();
-    acquireWakeLock();
-    resetFocusTimer();
-  }
-
-  const _origReset = resetTimer;
-  function resetTimer() {
-    _origReset();
-    clearTimeout(focusTimer);
-    exitFocusMode();
-    releaseWakeLock();
-  }
-
   // Track user interaction to reset focus countdown
-  ['touchstart','mousedown','mousemove','keydown'].forEach(ev => {
+  ['touchstart','mousedown','keydown'].forEach(ev => {
     document.addEventListener(ev, () => {
       if (isRunning) resetFocusTimer();
     }, {passive: true});
