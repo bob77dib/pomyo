@@ -554,6 +554,14 @@
 <div class="flash" id="flash"></div>
 <div class="toast" id="toast"></div>
 
+<!-- 로그인 모달 -->
+<div id="loginModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:flex-end;justify-content:center;">
+  <div style="position:relative;background:#fff;border-radius:24px 24px 0 0;padding:32px 24px 40px;width:100%;max-width:480px;box-shadow:0 -4px 30px rgba(0,0,0,0.12);">
+    <button onclick="closeLoginModal()" style="position:absolute;top:16px;right:20px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#aaa;">&#x2715;</button>
+    <div id="loginContent"></div>
+  </div>
+</div>
+
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -592,11 +600,11 @@
 
   // ── Auth UI ──
   function openLoginModal() {
-    document.getElementById('loginModal').classList.add('visible');
+    document.getElementById('loginModal').style.display = 'flex';
     renderLoginContent();
   }
   function closeLoginModal() {
-    document.getElementById('loginModal').classList.remove('visible');
+    document.getElementById('loginModal').style.display = 'none';
   }
   function renderLoginContent() {
     const el = document.getElementById('loginContent');
