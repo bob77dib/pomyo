@@ -462,11 +462,17 @@
     <div class="setting-group">
       <div class="setting-group-title">다기기 동기화</div>
       <div class="setting-row">
-        <div>
+        <div style="flex:1;min-width:0;">
           <div class="setting-label">Google 계정으로 동기화</div>
           <div class="setting-sub" id="syncStatus">로그인하면 모든 기기에서 기록이 자동으로 동기화돼요</div>
+          <div id="userInfoRow" style="display:none;align-items:center;gap:8px;margin-top:6px;">
+            <img id="userAvatar" src="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">
+            <span id="userName" style="font-size:0.8rem;color:#555;font-weight:500;"></span>
+          </div>
         </div>
-        <button onclick="openLoginModal()" style="background:var(--accent);border:none;border-radius:20px;color:#fff;font-family:'Pretendard',sans-serif;font-size:0.72rem;padding:8px 16px;cursor:pointer;letter-spacing:1px;white-space:nowrap;">로그인</button>
+        <div id="authBtnWrap">
+          <button onclick="openLoginModal()" id="loginBtn" style="background:var(--accent);border:none;border-radius:20px;color:#fff;font-family:'Pretendard',sans-serif;font-size:0.72rem;padding:8px 16px;cursor:pointer;letter-spacing:1px;white-space:nowrap;">로그인</button>
+        </div>
       </div>
     </div>
 
@@ -658,19 +664,26 @@
     const btn = document.getElementById('authBtn');
     const statusEl = document.getElementById('syncStatus');
     if (user) {
-      // 아바타 표시
-      if (user.photoURL) {
-        btn.innerHTML = `<img src="${user.photoURL}" alt="프로필">`;
-      } else {
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
-      }
-      if (statusEl) statusEl.textContent = `✅ ${user.displayName || user.email} 로그인 중`;
+      // 모달 자동 닫기
+      closeLoginModal();
+      // 설정화면 - 프로필 표시
+      const userInfoRow = document.getElementById('userInfoRow');
+      const userAvatar = document.getElementById('userAvatar');
+      const userNameEl = document.getElementById('userName');
+      const loginBtn = document.getElementById('loginBtn');
+      if (userInfoRow) userInfoRow.style.display = 'flex';
+      if (userAvatar && user.photoURL) userAvatar.src = user.photoURL;
+      if (userNameEl) userNameEl.textContent = user.displayName || user.email;
+      if (loginBtn) { loginBtn.textContent = '로그아웃'; loginBtn.onclick = () => auth.signOut(); loginBtn.style.background = '#eee'; loginBtn.style.color = '#666'; }
+      if (statusEl) statusEl.textContent = '동기화 중';
       // Firestore에서 데이터 로드
       await loadFromFirestore();
-      renderLoginContent();
       setSyncStatus('synced');
     } else {
-      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+      const userInfoRow = document.getElementById('userInfoRow');
+      const loginBtn = document.getElementById('loginBtn');
+      if (userInfoRow) userInfoRow.style.display = 'none';
+      if (loginBtn) { loginBtn.textContent = '로그인'; loginBtn.onclick = openLoginModal; loginBtn.style.background = 'var(--accent)'; loginBtn.style.color = '#fff'; }
       if (statusEl) statusEl.textContent = '로그인하면 모든 기기에서 기록이 자동으로 동기화돼요';
       setSyncStatus('');
     }
