@@ -471,7 +471,7 @@
           </div>
         </div>
         <div id="authBtnWrap">
-          <button onclick="openLoginModal()" id="loginBtn" style="background:var(--accent);border:none;border-radius:20px;color:#fff;font-family:'Pretendard',sans-serif;font-size:0.72rem;padding:8px 16px;cursor:pointer;letter-spacing:1px;white-space:nowrap;">로그인</button>
+          <button onclick="signInWithGoogle()" id="loginBtn" style="background:var(--accent);border:none;border-radius:20px;color:#fff;font-family:'Pretendard',sans-serif;font-size:0.72rem;padding:8px 16px;cursor:pointer;letter-spacing:1px;white-space:nowrap;">로그인</button>
         </div>
       </div>
     </div>
@@ -571,7 +571,7 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
   // ════════════════════════════════════════════════════
@@ -592,7 +592,7 @@
   // Firebase 초기화
   firebase.initializeApp(FIREBASE_CONFIG);
   const auth = firebase.auth();
-  const db   = firebase.firestore();
+  const db   = firebase.database();
 
   let currentUser = null;
   let isSyncing   = false;
@@ -683,7 +683,7 @@
       const userInfoRow = document.getElementById('userInfoRow');
       const loginBtn = document.getElementById('loginBtn');
       if (userInfoRow) userInfoRow.style.display = 'none';
-      if (loginBtn) { loginBtn.textContent = '로그인'; loginBtn.onclick = openLoginModal; loginBtn.style.background = 'var(--accent)'; loginBtn.style.color = '#fff'; }
+      if (loginBtn) { loginBtn.textContent = '로그인'; loginBtn.onclick = signInWithGoogle; loginBtn.style.background = 'var(--accent)'; loginBtn.style.color = '#fff'; }
       if (statusEl) statusEl.textContent = '로그인하면 모든 기기에서 기록이 자동으로 동기화돼요';
       setSyncStatus('');
     }
@@ -700,7 +700,7 @@
   async function saveToFirestore() {
     if (!currentUser) return;
     try {
-      await db.collection('users').doc(currentUser.uid).set({
+      await db.ref('users/' + currentUser.uid).set({
         sessions: allSessions,
         theme: currentTheme,
         settings: {
@@ -708,7 +708,7 @@
           ccw:      document.getElementById('dirToggle').checked,
           vib:      document.getElementById('vibToggle').checked,
         },
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        updatedAt: Date.now()
       });
       setSyncStatus('synced');
     } catch(e) {
@@ -721,9 +721,9 @@
     if (!currentUser) return;
     setSyncStatus('syncing');
     try {
-      const doc = await db.collection('users').doc(currentUser.uid).get();
-      if (doc.exists) {
-        const data = doc.data();
+      const snap = await db.ref('users/' + currentUser.uid).get();
+      if (snap.exists()) {
+        const data = snap.val();
         if (Array.isArray(data.sessions)) {
           allSessions = data.sessions;
           try { localStorage.setItem('pomo_sessions', JSON.stringify(allSessions)); } catch(e) {}
